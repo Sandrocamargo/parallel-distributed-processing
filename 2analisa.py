@@ -160,8 +160,8 @@ def analisar_e_gerar_graficos(caminho_csv, num_cores=None):
         alpha=0.7,
         label=f"Limite Físico ({num_cores} Cores)",
     )
-    ax.set_title("Tempo de Execução Médio vs. Processadores (IC 95%)", fontweight="bold")
-    ax.set_xlabel("Quantidade de Processadores / Threads (Workers)")
+    ax.set_title("Tempo de Execução Médio vs. Workers (IC 95%)", fontweight="bold")
+    ax.set_xlabel("Quantidade de Workers (Processadores / Threads)")
     ax.set_ylabel("Tempo de Execução (Segundos)")
     ax.set_xticks(workers)
     ax.legend()
@@ -204,7 +204,7 @@ def analisar_e_gerar_graficos(caminho_csv, num_cores=None):
         label=f"Limite Físico ({num_cores} Cores)",
     )
     ax.set_title("Curva de Speedup com Intervalo de Confiança (95%)", fontweight="bold")
-    ax.set_xlabel("Quantidade de Processadores / Threads (Workers)")
+    ax.set_xlabel("Quantidade de Workers (Processadores / Threads)")
     ax.set_ylabel("Speedup (Vezes mais rápido)")
     ax.set_xticks(workers)
     ax.legend()
@@ -245,8 +245,8 @@ def analisar_e_gerar_graficos(caminho_csv, num_cores=None):
             fontweight="bold",
         )
 
-    ax.set_title("Eficiência de Paralelização por Processador (IC 95%)", fontweight="bold")
-    ax.set_xlabel("Quantidade de Processadores / Threads (Workers)")
+    ax.set_title("Eficiência de Paralelização por Workers (IC 95%)", fontweight="bold")
+    ax.set_xlabel("Quantidade de Workers (Processadores / Threads)")
     ax.set_ylabel("Eficiência (%)")
     ax.set_ylim(0, max(stats_df["eficiencia_media"] + stats_df["eficiencia_ic"]) + 15)
     ax.set_xticks(workers)
@@ -274,7 +274,7 @@ def analisar_e_gerar_graficos(caminho_csv, num_cores=None):
         ax=ax,
     )
     ax.set_title("Variabilidade e Distribuição das Amostras Médias", fontweight="bold")
-    ax.set_xlabel("Quantidade de Processadores / Threads (Workers)")
+    ax.set_xlabel("Quantidade de Workers (Processadores / Threads)")
     ax.set_ylabel("Tempo de Execução (Segundos)")
     plt.savefig(os.path.join(OUTPUT_DIR, "4_variabilidade_boxplot.png"), dpi=300)
     plt.close()
