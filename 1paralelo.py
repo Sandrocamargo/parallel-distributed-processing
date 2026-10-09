@@ -1,3 +1,4 @@
+import concurrent.futures
 import configparser
 import csv
 import math
@@ -43,21 +44,28 @@ def run_chunk(args):
     return heavy_task(sub_n)
 
 
-def execute_parallel(num_workers, complexity):
-    """Divide a carga total entre os workers e mede o tempo do bloco."""
-    # Divisão da carga de trabalho entre os workers disponíveis
+def execute_benchmark(mode, num_workers, complexity):
+    """
+    Divide a carga total entre os workers e executa usando Processos ou Threads.
+    """
     chunk_size = complexity // num_workers
     tasks = [(chunk_size,) for _ in range(num_workers)]
 
     start_time = time.perf_counter()
 
     if num_workers == 1:
-        # Execução Sequencial Direta (1 worker)
+        # Execução Sequencial Direta em 1 worker
         heavy_task(complexity)
-    else:
-        # Execução Paralela dividida entre múltiplos processos
+    elif mode == "processos":
+        # Paralelismo via Processos (múltiplos interpretadores Python)
         with multiprocessing.Pool(processes=num_workers) as pool:
             pool.map(run_chunk, tasks)
+    elif mode == "threads":
+        # Paralelismo via Threads (mesmo interpretador Python, sujeito ao GIL)
+        with concurrent.futures.ThreadPoolExecutor(
+            max_workers=num_workers
+        ) as executor:
+            list(executor.map(run_chunk, tasks))
 
     end_time = time.perf_counter()
     return end_time - start_time
@@ -66,7 +74,7 @@ def execute_parallel(num_workers, complexity):
 if __name__ == "__main__":
     multiprocessing.freeze_support()
 
-    # Carrega os parâmetros a partir do arquivo params.cfg
+    # Carrega os parâmetros do arquivo params.cfg
     params = load_config("params.cfg")
 
     COMPLEXITY = params["COMPLEXITY"]
@@ -74,36 +82,44 @@ if __name__ == "__main__":
     MAX_WORKERS = params["MAX_WORKERS"]
     LOG_FILENAME = params["LOG_FILENAME"]
 
-    print("=" * 60)
-    print("INICIANDO BENCHMARK DE PROCESSAMENTO PARALELO")
-    print(f"Parâmetros lidos de: params.cfg")
-    print(f"Complexidade: {COMPLEXITY} iteracoes | Repeticoes: {REPETITIONS}")
-    print(f"Processadores/Threads avaliados: 1 ate {MAX_WORKERS}")
-    print("=" * 60)
+    MODES = ["processos", "threads"]
 
-    # Inicializa o arquivo de Log CSV
+    print("=" * 65)
+    print("INICIANDO BENCHMARK COMPARATIVO: PROCESSOS vs THREADS")
+    print(f"Parâmetros lidos de: params.cfg")
+    print(f"Complexidade: {COMPLEXITY:_} iterações | Repetições: {REPETITIONS}")
+    print(f"Workers avaliados: 1 até {MAX_WORKERS}")
+    print("=" * 65)
+
+    # Inicializa o arquivo de Log CSV com o novo campo 'modo'
     with open(LOG_FILENAME, mode="w", newline="", encoding="utf-8") as csv_file:
         writer = csv.writer(csv_file)
         writer.writerow(
-            ["repeticao", "quantidade_processadores", "tempo_execucao_segundos"]
+            ["modo", "repeticao", "quantidade_workers", "tempo_execucao_segundos"]
         )
 
-        # Loop de 1 até MAX_WORKERS (1 = Sequencial, 2+ = Paralelo)
-        for num_workers in range(1, MAX_WORKERS + 1):
-            print(f"\n[Avaliando {num_workers} Processador(es)...]")
+        for mode in MODES:
+            print(f"\n" + "#" * 50)
+            print(f"=== EXECUÇÃO VIA: {mode.upper()} ===")
+            print("#" * 50)
 
-            for rep in range(1, REPETITIONS + 1):
-                elapsed_time = execute_parallel(num_workers, COMPLEXITY)
+            for num_workers in range(1, MAX_WORKERS + 1):
+                print(f"\n[Modo: {mode} | Avaliando {num_workers} Worker(s)...]")
 
-                # Registra no log
-                writer.writerow([rep, num_workers, f"{elapsed_time:.4f}"])
-                csv_file.flush()  # Garante gravação imediata no disco
+                for rep in range(1, REPETITIONS + 1):
+                    elapsed_time = execute_benchmark(mode, num_workers, COMPLEXITY)
 
-                print(
-                    f" -> Repetição {rep:2d}/{REPETITIONS} | "
-                    f"Workers: {num_workers:2d} | Tempo: {elapsed_time:.2f}s"
-                )
+                    # Registra no CSV
+                    writer.writerow(
+                        [mode, rep, num_workers, f"{elapsed_time:.4f}"]
+                    )
+                    csv_file.flush()
 
-    print("\n" + "=" * 60)
+                    print(
+                        f" -> Modo: {mode:<9} | Repetição {rep:2d}/{REPETITIONS} | "
+                        f"Workers: {num_workers:2d} | Tempo: {elapsed_time:.2f}s"
+                    )
+
+    print("\n" + "=" * 65)
     print(f"Benchmark finalizado com sucesso! Log salvo em: {LOG_FILENAME}")
-    print("=" * 60)
+    print("=" * 65)
