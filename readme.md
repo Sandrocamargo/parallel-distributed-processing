@@ -85,8 +85,10 @@ As figuras abaixo apresentam graficamente os resultados da comparação de desem
 ![Tempo](1_comparacao_tempo_execucao.png)
 
 ### Figura 2: Análise de SpeedUp
+![SpeedUp](2_comparacao_speedup.png)
 
 ### Figura 3: Eficiência da Paralelização
+![Eficiencia](3_comparacao_eficiencia.png)
 
 ---
 
