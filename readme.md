@@ -82,6 +82,7 @@ O conjunto de dados `benchmark_paralelismo.csv` registra **400 execuções** (20
 As figuras abaixo apresentam graficamente os resultados da comparação de desempenho.
 
 ### Figura 1: Comparação do Tempo de Execução entre Processos e Threads
+![Tempo](1_comparacao_tempo_execucao.png)
 
 ### Figura 2: Análise de SpeedUp
 
