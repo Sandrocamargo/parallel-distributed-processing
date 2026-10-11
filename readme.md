@@ -107,3 +107,12 @@ As figuras abaixo apresentam graficamente os resultados da comparação de desem
 ### 5.3 Conclusão
 
 O experimento demonstra na prática a distinção fundamental entre **concorrência** e **paralelismo real**. Para tarefas baseadas em processamento matemático intensivo em Python, o modelo de **processos com memória separada** é indispensável para usufruir da arquitetura multicore dos computadores modernos.
+
+
+### 6. Replicação do experimento
+
+Para aumentar ou reduzir a complexidade do experimento, para alterar o tempo de execução, altere o parâmetro **complexidade** no arquivo **params.cfg**.
+
+Para executar o experimento, execute o comando: **python3 1paralelopy**.
+
+Para realizar a análise estatística e gerar os gráficos, execute o comando: **python3 2analisa.py**.
