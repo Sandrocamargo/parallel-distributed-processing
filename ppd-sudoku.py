@@ -111,5 +111,6 @@ tempo_decorrido = tempo_fim - tempo_inicio
 print("\n" + "=" * 45)
 print(f"Tempo total decorrido: {tempo_decorrido:.2f} segundos")
 print("=" * 45)
-print("\n\nPara fazer o profile deste código, execute no seu linux o seguinte comando:\n perf stat -r 10 python3 ppd-sudoku.py")
+print("\n\nPara fazer o profile deste código, execute no seu linux o seguinte comando:\n perf stat python3 ppd-sudoku.py")
+print("\n\nPara fazer o profiler detalhado deste código, execute no seu linux o seguinte comando:\n python3 -m cProfile -s cumtime ppd-sudoku.py")
 
