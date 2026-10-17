@@ -7,7 +7,7 @@ import os
 import time
 
 
-def load_config(config_path="params.cfg"):
+def load_config(config_path):
     """Lê e valida os parâmetros do arquivo de configuração."""
     if not os.path.exists(config_path):
         raise FileNotFoundError(
@@ -57,12 +57,18 @@ def execute_benchmark(mode, num_workers, complexity):
         # Execução Sequencial Direta em 1 worker
         heavy_task(complexity)
     elif mode == "processos":
-        # Paralelismo via Processos (múltiplos interpretadores Python)
+        # Paralelismo via Processos com multiprocessing.Pool
         with multiprocessing.Pool(processes=num_workers) as pool:
             pool.map(run_chunk, tasks)
-    elif mode == "threads":
-        # Paralelismo via Threads (mesmo interpretador Python, sujeito ao GIL)
+    elif mode == "threads(GIL)":
+        # Paralelismo via Threads com ThreadPoolExecutor
         with concurrent.futures.ThreadPoolExecutor(
+            max_workers=num_workers
+        ) as executor:
+            list(executor.map(run_chunk, tasks))
+    elif mode == "threads(poolexecutor)":
+        # Paralelismo via Processos usando a interface ProcessPoolExecutor de concurrent.futures
+        with concurrent.futures.ProcessPoolExecutor(
             max_workers=num_workers
         ) as executor:
             list(executor.map(run_chunk, tasks))
@@ -75,23 +81,24 @@ if __name__ == "__main__":
     multiprocessing.freeze_support()
 
     # Carrega os parâmetros do arquivo params.cfg
-    params = load_config("params.cfg")
+    params = load_config("0params.cfg")
 
     COMPLEXITY = params["COMPLEXITY"]
     REPETITIONS = params["REPETITIONS"]
     MAX_WORKERS = params["MAX_WORKERS"]
     LOG_FILENAME = params["LOG_FILENAME"]
 
-    MODES = ["processos", "threads"]
+    # Inclusão do novo modo na lista de execuções
+    MODES = ["processos", "threads(GIL)", "threads(poolexecutor)"]
 
     print("=" * 65)
-    print("INICIANDO BENCHMARK COMPARATIVO: PROCESSOS vs THREADS")
+    print("INICIANDO BENCHMARK COMPARATIVO DE PARALELISMO")
     print(f"Parâmetros lidos de: params.cfg")
     print(f"Complexidade: {COMPLEXITY:_} iterações | Repetições: {REPETITIONS}")
     print(f"Workers avaliados: 1 até {MAX_WORKERS}")
     print("=" * 65)
 
-    # Inicializa o arquivo de Log CSV com o novo campo 'modo'
+    # Inicializa o arquivo de Log CSV com o campo 'modo'
     with open(LOG_FILENAME, mode="w", newline="", encoding="utf-8") as csv_file:
         writer = csv.writer(csv_file)
         writer.writerow(
@@ -99,7 +106,7 @@ if __name__ == "__main__":
         )
 
         for mode in MODES:
-            print(f"\n" + "#" * 50)
+            print("\n" + "#" * 50)
             print(f"=== EXECUÇÃO VIA: {mode.upper()} ===")
             print("#" * 50)
 
@@ -116,7 +123,7 @@ if __name__ == "__main__":
                     csv_file.flush()
 
                     print(
-                        f" -> Modo: {mode:<9} | Repetição {rep:2d}/{REPETITIONS} | "
+                        f" -> Modo: {mode:<22} | Repetição {rep:2d}/{REPETITIONS} | "
                         f"Workers: {num_workers:2d} | Tempo: {elapsed_time:.2f}s"
                     )
 

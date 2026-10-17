@@ -119,9 +119,19 @@ def analisar_e_gerar_graficos(caminho_csv, num_cores=None):
             )
         )
 
-    # Palette de cores padronizada
-    cores_modo = {"processos": "#1f77b4", "threads": "#d62728"}
-    markers_modo = {"processos": "o", "threads": "s"}
+    # Paleta de cores e marcadores padronizados para os 3 modos
+    cores_modo = {
+        "processos": "#1f77b4",  # Azul (multiprocessing.Pool)
+        "threads(GIL)": "#d62728",  # Vermelho (ThreadPoolExecutor)
+        "threads(poolexecutor)": "#2ca02c",  # Verde (ProcessPoolExecutor)
+    }
+
+    markers_modo = {
+        "processos": "o",  # Círculo
+        "threads(GIL)": "s",  # Quadrado
+        "threads(poolexecutor)": "^",  # Triângulo
+    }
+
     workers = sorted(stats_df["quantidade_workers"].unique())
 
     # --- Gráfico 1: Tempo Médio de Execução (Processos vs Threads) ---
@@ -160,7 +170,7 @@ def analisar_e_gerar_graficos(caminho_csv, num_cores=None):
     ax.set_xlabel("Quantidade de Workers")
     ax.set_ylabel("Tempo de Execução (Segundos)")
     ax.set_xticks(workers)
-    ax.legend(loc="upper right")
+    ax.legend(loc="center right")
     plt.savefig(
         os.path.join(OUTPUT_DIR, "1_comparacao_tempo_execucao.png"), dpi=300
     )
