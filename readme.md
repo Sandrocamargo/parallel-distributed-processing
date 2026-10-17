@@ -111,7 +111,7 @@ O experimento demonstra na prática a distinção fundamental entre **concorrên
 
 ### 6. Replicação do experimento
 
-Para aumentar ou reduzir a complexidade do experimento, para alterar o tempo de execução, altere o parâmetro **complexidade** no arquivo **params.cfg**.
+Para aumentar ou reduzir a complexidade do experimento, para alterar o tempo de execução, altere o parâmetro **complexidade** no arquivo **0params.cfg**.
 
 Para executar o experimento, execute o comando: **python3 1paralelo.py**.
 
