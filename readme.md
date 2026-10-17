@@ -48,33 +48,35 @@ def run_chunk(args):
 
 ## 2. A Problemática do *Global Interpreter Lock* (GIL) em CPython
 
-Na linguagem Python (em sua implementação padrão CPython), a execução concorrente por meio de *threads* nativas é regida pelo **GIL (*Global Interpreter Lock*)**.
+Na linguagem Python, especificamente na sua implementação padrão (CPython), a execução concorrente por meio de *threads* nativas do sistema operacional é estritamente limitada pelo mecanismo do **GIL (*Global Interpreter Lock*)**. O impacto dessa limitação varia conforme o paradigma de concorrencia e a natureza da carga de trabalho:
 
-* **Para Tarefas I/O-bound (Rede/Disco):** As *threads* liberam o GIL enquanto aguardam respostas externas, permitindo alto ganho de concorrência.
-* **Para Tarefas CPU-bound (`heavy_task`):** Como o laço de repetição consome ciclos ininterruptos de CPU executando *bytecodes* Python, as *threads* entram em **disputa direta (*lock contention*)** pelo GIL. Apenas **uma única *thread*** pode executar código Python por vez dentro de um mesmo processo, independentemente de quantos núcleos físicos o processador possua.
+- **Tarefas *I/O-bound* (Operações de Rede e Disco):** O GIL é liberado temporariamente enquanto as *threads* aguardam respostas externas do sistema operacional, permitindo uma concorrência eficiente e ganhos substanciais de desempenho.
+- **Tarefas *CPU-bound* (como o algoritmo `heavy_task`):** Como os laços de repetição demandam processamento contínuo de *bytecodes*, as *threads* entram em intensa **disputa pelo *lock* (*lock contention*)**. Consequentemente, apenas **uma única *thread*** consegue executar código Python por vez dentro do mesmo processo, inviabilizando o uso de múltiplos núcleos físicos de CPU via `ThreadPoolExecutor` (`threads(GIL)`).
 
-Para obter paralelismo real com tarefas *CPU-bound* em Python, utiliza-se o modelo de **múltiplos processos (`multiprocessing`)**, no qual cada *worker* roda em seu próprio processo independente, com seu próprio interpretador CPython e seu próprio GIL isolado.
+Para contornar essa limitação em tarefas *CPU-bound*, foram avaliadas abordagens baseadas em múltiplos processos (`processos` com `multiprocessing.Pool` e `threads(poolexecutor)` com `ProcessPoolExecutor`). Nesses modelos, cada *worker* é alocado em um processo independente, dispondo de seu próprio interpretador CPython e, por conseguinte, de um GIL isolado, o que viabiliza o paralelismo real e o uso efetivo de múltiplos núcleos de processamento.
+
 
 ---
 
 ## 3. Análise dos Resultados Empíricos
 
-O conjunto de dados `benchmark_paralelismo.csv` registra **400 execuções** (20 configurações de quantidade de *workers* com 10 repetições cada).
+O conjunto de dados `benchmark_paralelismo.csv` registra **600 execuções** (compostas por 20 configurações distintas de quantidade de *workers*, submetidas a 10 repetições para cada um dos 3 modos de execução avaliados: `processos`, `threads(GIL)` e `threads(poolexecutor)`).
 
-### Tabela 1: Métricas de Desempenho Média por Quantidade de Workers ($p$)
+#### Tabela 1: Métricas de Desempenho Média por Quantidade de Workers ($p$)
 
-| Workers ($p$) | Proc. Tempo (s) | Proc. $S_p$ | Proc. $E_p$ | Thread Tempo (s) | Thread $S_p$ | Thread $E_p$ |
-| --- | --- | --- | --- | --- | --- | --- |
-| **1** | 7,3314 | 1,00x | 100,0% | 7,6393 | 1,00x | 100,0% |
-| **2** | 4,5424 | 1,61x | 80,7% | 9,5986 | 0,80x | 39,8% |
-| **3** | 3,0129 | 2,43x | 81,1% | 9,0691 | 0,84x | 28,1% |
-| **4** | 2,2735 | 3,22x | 80,6% | 9,0341 | 0,85x | 21,1% |
-| **6** | 2,2082 | 3,32x | 55,3% | 8,6897 | 0,88x | 14,7% |
-| **8** | 2,3788 | 3,08x | 38,5% | 8,5908 | 0,89x | 11,1% |
-| **10** | 2,4047 | 3,05x | 30,5% | 9,1692 | 0,83x | 8,3% |
-| **12** | 2,1046 | 3,48x | 29,0% | 8,9984 | 0,85x | 7,1% |
-| **16** | 2,0155 | 3,64x | 22,7% | 8,5566 | 0,89x | 5,6% |
-| **20** | 2,0537 | 3,57x | 17,8% | 7,3029 | 1,05x | 5,2% |
+| Workers ($p$) | Proc. Tempo (s) | Proc. $S_p$ | Proc. $E_p$ | Thread (GIL) Tempo (s) | Thread (GIL) $S_p$ | Thread (GIL) $E_p$ | PoolExec. Tempo (s) | PoolExec. $S_p$ | PoolExec. $E_p$ |
+| :-: | :-: | :-: | :-: | :-: | :-: | :-: | :-: | :-: | :-: |
+| **1** | 7,5766 | 1,00x | 100,0% | 7,3698 | 1,00x | 100,0% | 7,4665 | 1,00x | 100,0% |
+| **2** | 4,0560 | 1,87x | 93,4% | 7,4883 | 0,98x | 49,2% | 4,1009 | 1,82x | 91,0% |
+| **3** | 2,8606 | 2,65x | 88,3% | 7,6125 | 0,97x | 32,3% | 2,9483 | 2,53x | 84,4% |
+| **4** | 2,1963 | 3,45x | 86,2% | 7,5599 | 0,97x | 24,4% | 2,2824 | 3,27x | 81,8% |
+| **6** | 2,1354 | 3,55x | 59,1% | 7,5284 | 0,98x | 16,3% | 2,1759 | 3,43x | 57,2% |
+| **8** | 2,1952 | 3,45x | 43,1% | 7,4772 | 0,99x | 12,3% | 2,1448 | 3,48x | 43,5% |
+| **10** | 2,1207 | 3,57x | 35,7% | 7,4996 | 0,98x | 9,8% | 2,1552 | 3,46x | 34,6% |
+| **12** | 2,1890 | 3,46x | 28,8% | 7,4527 | 0,99x | 8,2% | 2,1411 | 3,49x | 29,1% |
+| **16** | 2,1183 | 3,58x | 22,4% | 7,4287 | 0,99x | 6,2% | 2,1391 | 3,49x | 21,8% |
+| **20** | 2,1420 | 3,54x | 17,7% | 7,4975 | 0,98x | 4,9% | 2,1558 | 3,46x | 17,3% |
+
 
 ---
 
@@ -95,19 +97,19 @@ As figuras abaixo apresentam graficamente os resultados da comparação de desem
 
 ## 5. Discussão e Conclusões Técnicas
 
-### 5.1 Desempenho com Processos (`multiprocessing`)
+### 5.1 Desempenho com Processos (`processos` e `threads(poolexecutor)`)
 
-* **Ganho Escalar Significativo:** No intervalo de $1$ a $4$ *workers*, o tempo médio de execução cai de **7,33 segundos** para **2,27 segundos**, alcançando um **Speedup de 3,22x** e mantendo a eficiência acima de **80%**.
-* **Limite do Hardware:** A partir de $4$ *workers*, o tempo se estabiliza na faixa de **2,0 s a 2,2 s**. Isso evidencia que a arquitetura do processador onde os testes foram realizados possui **4 núcleos físicos de processamento**. A adição de novos processos além dos núcleos físicos gera *overhead* de alternância de contexto no sistema operacional, estabilizando o *speedup* em aproximadamente **3,64x**.
+- **Ganho Escalar Significativo:** No intervalo de $1$ a $4$ *workers*, observa-se uma redução consistente no tempo médio de execução em ambas as abordagens baseadas em processos. No modo `processos` (`multiprocessing.Pool`), o tempo cai de **7,58 s** para **2,20 s** ($S_p = 3,45\text{x}$; $E_p = 86,2\%$). No modo `threads(poolexecutor)` (`ProcessPoolExecutor`), o tempo reduz de **7,47 s** para **2,28 s** ($S_p = 3,27\text{x}$; $E_p = 81,8\%$).
+- **Saturação de Hardware e Escalabilidade:** O desempenho máximo é atingido entre $4$ e $6$ *workers*, onde os tempos de execução se estabilizam na faixa de **2,12 s a 2,18 s** em ambos os modos. A estabilização do *speedup* em aproximadamente **3,55x** evidencia que a arquitetura do processador dispõe de **4 núcleos físicos de processamento**; a adição de *workers* além desse limite não gera ganhos adicionais devido ao *overhead* de alternância de contexto (*context switching*) e ao escalonamento de processos pelo sistema operacional.
 
-### 5.2 Desempenho com Threads (`threading`)
+### 5.2 Desempenho com Threads (`threads(GIL)`)
 
-* **Degradação por Contenda do GIL:** Ao aumentar de 1 para 2 *threads*, o tempo de execução **aumenta** de **7,64 s** para **9,60 s** (Speedup negativo de **0,80x**).
-* **Razão do Comportamento:** Como a função `heavy_task` é estritamente matemática (*CPU-bound*), o sistema passa mais tempo alternando a posse do *lock* do GIL entre as *threads* do que efetuando processamento útil. A concorrência por *threads* sem paralelismo real gera *overhead* de sincronização, tornando a execução paralela mais lenta que a sequencial.
+- **Estagnação e Degradação Relativa:** O uso de `ThreadPoolExecutor` para uma carga estritamente matemática (*CPU-bound*) demonstrou a ineficácia do paralelismo via *threads* em CPython. O tempo de execução permaneceu praticamente constante em todas as configurações, variando de **7,37 s** ($p=1$) a **7,61 s** ($p=3$), mantendo o *speedup* estagnado próximo a **0,97x–1,00x**.
+- **Mecanismo de Contenda do GIL:** Como a função `heavy_task` consome ciclos ininterruptos de CPU executando *bytecodes*, as *threads* entram em disputa constante pela posse do *lock* do GIL (*lock contention*). O custo de sincronização e chaveamento entre *threads* sem a capacidade de execução paralela em múltiplos núcleos faz com que a eficiência despenque progressivamente à medida que $p$ aumenta, caindo de **100,0%** ($p=1$) para apenas **4,9%** ($p=20$).
 
 ### 5.3 Conclusão
 
-O experimento demonstra na prática a distinção fundamental entre **concorrência** e **paralelismo real**. Para tarefas baseadas em processamento matemático intensivo em Python, o modelo de **processos com memória separada** é indispensável para usufruir da arquitetura multicore dos computadores modernos.
+Os resultados empíricos ratificam a distinção fundamental entre **concorrência** e **paralelismo real** no ecossistema Python. Para tarefas intensivas de processamento matemático (*CPU-bound*), o modelo de **múltiplos processos isolados** — seja via `multiprocessing.Pool` ou `ProcessPoolExecutor` — é estritamente necessário para contornar as limitações do GIL e obter escalabilidade real na arquitetura *multicore* dos processadores modernos.
 
 
 ### 6. Replicação do experimento
