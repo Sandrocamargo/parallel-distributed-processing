@@ -217,18 +217,24 @@ def analisar_e_gerar_graficos(caminho_csv, num_cores=None):
     plt.savefig(os.path.join(OUTPUT_DIR, "2_comparacao_speedup.png"), dpi=300)
     plt.close()
 
-    # --- Gráfico 3: Eficiência Agrupada ---
+# --- Gráfico 3: Eficiência Agrupada em Linhas ---
     fig, ax = plt.subplots(figsize=(10, 5.5))
-    sns.barplot(
+    
+    sns.lineplot(
         data=df,
         x="quantidade_workers",
         y="eficiencia_%",
         hue="modo",
-        ax=ax,
+        style="modo",
+        markers=markers_modo,
+        dashes=False,
         palette=cores_modo,
         errorbar=("ci", 95),
-        capsize=0.1,
+        linewidth=2,
+        markersize=7,
+        ax=ax,
     )
+    
     ax.axhline(
         100,
         linestyle="--",
@@ -236,18 +242,23 @@ def analisar_e_gerar_graficos(caminho_csv, num_cores=None):
         alpha=0.7,
         label="Eficiência Ideal (100%)",
     )
+    
     ax.set_title(
         "Eficiência de Paralelização: Processos vs Threads",
         fontweight="bold",
     )
     ax.set_xlabel("Quantidade de Workers")
     ax.set_ylabel("Eficiência (%)")
+    ax.set_xticks(sorted(df["quantidade_workers"].unique()))
+    ax.grid(True, linestyle="--", alpha=0.5)
     ax.legend(title="Modo")
+    
+    plt.tight_layout()
     plt.savefig(
         os.path.join(OUTPUT_DIR, "3_comparacao_eficiencia.png"), dpi=300
     )
     plt.close()
-
+    
     # --- Gráfico 4: Boxplot do Comportamento das Amostras (Dispersão) ---
     fig, ax = plt.subplots(figsize=(10, 5.5))
     sns.boxplot(
