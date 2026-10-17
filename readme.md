@@ -1,6 +1,7 @@
 # Relatório Técnico: Avaliação de Paralelismo em Tarefas Intensivas de CPU em Python
 
 **Disciplina:** Programação Paralela e Distribuída
+**Professores:** Sandro Camargo e Leonardo Pinho
 
 ---
 
