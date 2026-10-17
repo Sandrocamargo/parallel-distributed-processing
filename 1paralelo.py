@@ -28,10 +28,7 @@ def load_config(config_path):
 
 
 def heavy_task(n):
-    """
-    Tarefa CPU-bound que simula um processamento pesado sem usar sleep().
-    Recebe o parâmetro de complexidade e executa operações matemáticas.
-    """
+    """Tarefa CPU-bound que simula processamento pesado sem usar sleep()."""
     total = 0.0
     for i in range(1, n + 1):
         total += math.sqrt(i) * math.sin(i)
@@ -44,43 +41,75 @@ def run_chunk(args):
     return heavy_task(sub_n)
 
 
-def execute_benchmark(mode, num_workers, complexity):
-    """
-    Divide a carga total entre os workers e executa usando Processos ou Threads.
-    """
-    chunk_size = complexity // num_workers
-    tasks = [(chunk_size,) for _ in range(num_workers)]
+# ==============================================================================
+# STRATEGIES DE EXECUÇÃO
+# ==============================================================================
 
+
+def run_processos(tasks, num_workers):
+    """Paralelismo via múltiplos processos (multiprocessing.Pool)."""
+    with multiprocessing.Pool(processes=num_workers) as pool:
+        pool.map(run_chunk, tasks)
+
+
+def run_threads_gil(tasks, num_workers):
+    """Paralelismo via threads sujeitas ao GIL (ThreadPoolExecutor)."""
+    with concurrent.futures.ThreadPoolExecutor(
+        max_workers=num_workers
+    ) as executor:
+        list(executor.map(run_chunk, tasks))
+
+
+def run_threads_poolexecutor(tasks, num_workers):
+    """Paralelismo via múltiplos processos (ProcessPoolExecutor)."""
+    with concurrent.futures.ProcessPoolExecutor(
+        max_workers=num_workers
+    ) as executor:
+        list(executor.map(run_chunk, tasks))
+
+
+# Mapeamento dos modos de execução para suas respectivas funções
+EXECUTION_STRATEGIES = {
+    "processos": run_processos,
+    "threads(GIL)": run_threads_gil,
+    "threads(poolexecutor)": run_threads_poolexecutor,
+}
+
+
+# ==============================================================================
+# FUNÇÃO PRINCIPAL DE EXECUÇÃO
+# ==============================================================================
+
+
+def execute_benchmark(mode, num_workers, complexity):
+    """Divide a carga total entre os workers e despacha para a função correspondente."""
     start_time = time.perf_counter()
 
     if num_workers == 1:
-        # Execução Sequencial Direta em 1 worker
+        # Execução sequencial direta em 1 worker
         heavy_task(complexity)
-    elif mode == "processos":
-        # Paralelismo via Processos com multiprocessing.Pool
-        with multiprocessing.Pool(processes=num_workers) as pool:
-            pool.map(run_chunk, tasks)
-    elif mode == "threads(GIL)":
-        # Paralelismo via Threads com ThreadPoolExecutor
-        with concurrent.futures.ThreadPoolExecutor(
-            max_workers=num_workers
-        ) as executor:
-            list(executor.map(run_chunk, tasks))
-    elif mode == "threads(poolexecutor)":
-        # Paralelismo via Processos usando a interface ProcessPoolExecutor de concurrent.futures
-        with concurrent.futures.ProcessPoolExecutor(
-            max_workers=num_workers
-        ) as executor:
-            list(executor.map(run_chunk, tasks))
+    else:
+        chunk_size = complexity // num_workers
+        tasks = [(chunk_size,) for _ in range(num_workers)]
+
+        # Seleciona e executa a função do modo correspondente
+        strategy = EXECUTION_STRATEGIES.get(mode)
+        if not strategy:
+            raise ValueError(f"Modo de execução desconhecido: '{mode}'")
+
+        strategy(tasks, num_workers)
 
     end_time = time.perf_counter()
     return end_time - start_time
 
 
+# ==============================================================================
+# PONTO DE ENTRADA DO SCRIPT
+# ==============================================================================
+
 if __name__ == "__main__":
     multiprocessing.freeze_support()
 
-    # Carrega os parâmetros do arquivo params.cfg
     params = load_config("0params.cfg")
 
     COMPLEXITY = params["COMPLEXITY"]
@@ -88,17 +117,15 @@ if __name__ == "__main__":
     MAX_WORKERS = params["MAX_WORKERS"]
     LOG_FILENAME = params["LOG_FILENAME"]
 
-    # Inclusão do novo modo na lista de execuções
-    MODES = ["processos", "threads(GIL)", "threads(poolexecutor)"]
+    MODES = list(EXECUTION_STRATEGIES.keys())
 
     print("=" * 65)
     print("INICIANDO BENCHMARK COMPARATIVO DE PARALELISMO")
-    print(f"Parâmetros lidos de: params.cfg")
+    print("Parâmetros lidos de: 0params.cfg")
     print(f"Complexidade: {COMPLEXITY:_} iterações | Repetições: {REPETITIONS}")
     print(f"Workers avaliados: 1 até {MAX_WORKERS}")
     print("=" * 65)
 
-    # Inicializa o arquivo de Log CSV com o campo 'modo'
     with open(LOG_FILENAME, mode="w", newline="", encoding="utf-8") as csv_file:
         writer = csv.writer(csv_file)
         writer.writerow(
@@ -116,7 +143,6 @@ if __name__ == "__main__":
                 for rep in range(1, REPETITIONS + 1):
                     elapsed_time = execute_benchmark(mode, num_workers, COMPLEXITY)
 
-                    # Registra no CSV
                     writer.writerow(
                         [mode, rep, num_workers, f"{elapsed_time:.4f}"]
                     )
